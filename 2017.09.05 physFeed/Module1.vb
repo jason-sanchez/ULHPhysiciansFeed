@@ -36,13 +36,19 @@ Module Module1
     Dim staffIDCodeArray() As String
     Dim staffIDCodeArrayItem() As String
 
+    Private fullinipath As String = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory, "..\..\..\Configs\ULH\HL7Mapper.ini")) ' New test
+    'Private fullinipath As String = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory, "..\..\..\..\..\..\..\..\..\Configs\ULH\HL7Mapper.ini")) ' local
+    Public objIniFile As New iniFile(fullinipath) '20140817 - New Test
     'Public objIniFile As New iniFile("C:\KY2 Test Environment\HL7Mapper.ini") 'Local
     'Public objIniFile As New iniFile("C:\ULHTest\HL7Mapper.ini") 'Test
-    Public objIniFile As New iniFile("C:\newfeeds\HL7Mapper.ini") '20140805 Prod
+    'Public objIniFile As New iniFile("C:\newfeeds\HL7Mapper.ini") '20140805 Prod
 
+    Private fullconinipath As String = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory, "..\..\..\Configs\ULH\ConnProd.ini")) 'New Test
+    'Private fullconinipath As String = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory, "..\..\..\..\..\..\..\..\..\Configs\ULH\ConnProd.ini")) 'local
+    Public conIniFile As New iniFile(fullconinipath) '20140805 New Test
     'Public conIniFile As New iniFile("C:\KY2 Test Environment\KY2ConnDev.ini") 'Local
     'Public conIniFile As New iniFile("C:\ULHTest\KY2ConnTest.ini") 'Test
-    Public conIniFile As New iniFile("C:\newfeeds\KY2ConnProd.ini") '20140805 Prod
+    'Public conIniFile As New iniFile("C:\newfeeds\KY2ConnProd.ini") '20140805 Prod
 
     Dim strOutputDirectory As String = ""
     Dim strMapperFile As String = ""
@@ -106,10 +112,13 @@ Module Module1
         Dim strLine As String
         'Dim sql As String = ""
         'Dim datareader As SqlDataReader
+        Dim dire As String = objIniFile.GetString("Settings", "directory", "(none)") & ":\"
+        Dim parent As String = objIniFile.GetString("Settings", "parentDir", "(none)") & "\"
+
         Try
-            strOutputDirectory = objIniFile.GetString("Physicians", "Physiciansoutputdirectory", "(none)") 'c:\feeds\ltw\Physicians\
-            strMapperFile = objIniFile.GetString("Physicians", "Physiciansmapper", "(none)") 'c:\newfeeds\map\Physicians.txt
-			strLogDirectory = objIniFile.GetString("Settings", "logs", "(none)") '20150708
+            strOutputDirectory = dire & parent & objIniFile.GetString("Physicians", "Physiciansoutputdirectory", "(none)") 'c:\feeds\ltw\Physicians\
+            strMapperFile = dire & parent & objIniFile.GetString("Physicians", "Physiciansmapper", "(none)") 'c:\newfeeds\map\Physicians.txt
+            strLogDirectory = dire & parent & objIniFile.GetString("Settings", "logs", "(none)") '20150708
 
             'setup directory
             Dim dirs As String() = Directory.GetFiles(strOutputDirectory, "LTW.*")
@@ -129,7 +138,7 @@ Module Module1
 
             McareConnectionString = conIniFile.GetString("Strings", "PHYSMCARE", "(none)")
             ITWConnectionString = conIniFile.GetString("Strings", "PHYSITW", "(none)")
-            ShelbyConnectionString = conIniFile.GetString("Strings", "PHYSHELBY", "(none)")
+            'ShelbyConnectionString = conIniFile.GetString("Strings", "PHYSHELBY", "(none)")
 
             'Dim myConnection As New SqlConnection(connectionString)
             'Dim objCommand As New SqlCommand
@@ -209,7 +218,7 @@ Module Module1
                         Call processSpecialty(dictNVP)
                         Call updateMcare(dictNVP)
                         Call updateITW(dictNVP)
-                        Call updateShelby(dictNVP)
+                        'Call updateShelby(dictNVP)
                     End If
 
                     '===================================================================================================
@@ -460,36 +469,54 @@ Module Module1
         Dim updateit As Boolean
         addit = False
         updateit = False
+        Dim fulladdressarray() As String
+        Dim officeaddressarray() As String
+        Dim fulladdress As String = ""
 
         Dim j As Integer = 0
         Try
             strAddress = dictNVP.Item("Office/Home Address")
             If strAddress <> "" Then ' 20111101
-                addressArray = Split(strAddress, "~")
-                For j = 0 To UBound(addressArray)
-                    'txtOutput.Text = txtOutput.Text & "+++++++++++++++++++++++++" & vbCrLf
-                    'txtOutput.Text = txtOutput.Text & addressArray(j) & vbCrLf
-                    strAddressItem = addressArray(j)
-                    addressItemArray = Split(strAddressItem, "^")
-                    For i = 0 To UBound(addressItemArray)
-                        'txtOutput.Text = txtOutput.Text & i & "  -  " & addressItemArray(i) & vbCrLf
-                    Next
 
-                    Select Case Mid(addressItemArray(6), 1, 1)
-                        Case "O"
-                            If j = 0 Then
-                                gblAddr1 = addressItemArray(0) & " " & addressItemArray(1)
-                                gblAddr2 = addressItemArray(2) & ", " & addressItemArray(3) & "  " & addressItemArray(4)
-                            ElseIf j = 1 Then
-                                gblAddr1_2 = addressItemArray(0) & " " & addressItemArray(1)
-                                gblAddr2_2 = addressItemArray(2) & ", " & addressItemArray(3) & "  " & addressItemArray(4)
-                            ElseIf j = 2 Then
-                                gblAddr1_3 = addressItemArray(0) & " " & addressItemArray(1)
-                                gblAddr2_3 = addressItemArray(2) & ", " & addressItemArray(3) & "  " & addressItemArray(4)
-                            End If
+                fulladdress = dictNVP.Item("Office/Home Address")
 
-                    End Select
-                Next
+                If fulladdress.Contains("~") Then
+                    fulladdressarray = Split(fulladdress, "~")
+                    officeaddressarray = Split(fulladdressarray(1), "^")
+                    gblAddr1 = officeaddressarray(0) & " " & officeaddressarray(1)
+                    gblAddr2 = officeaddressarray(2) & ", " & officeaddressarray(3) & " " & officeaddressarray(4)
+                Else
+                    gblAddr1 = dictNVP.Item("Office/Home Address Address 1") & " " & dictNVP.Item("Office/Home Address Address 2")
+                    gblAddr2 = dictNVP.Item("Office/Home Address City") & ", " & dictNVP.Item("Office/Home Address State") & " " & dictNVP.Item("Office/Home Address Zip Code")
+                End If
+
+
+                'addressArray = Split(strAddress, "~")
+                'For j = 0 To UBound(addressArray)
+                '    'txtOutput.Text = txtOutput.Text & "+++++++++++++++++++++++++" & vbCrLf
+                '    'txtOutput.Text = txtOutput.Text & addressArray(j) & vbCrLf
+                '    strAddressItem = addressArray(j)
+                '    addressItemArray = Split(strAddressItem, "^")
+                '    For i = 0 To UBound(addressItemArray)
+                '        'txtOutput.Text = txtOutput.Text & i & "  -  " & addressItemArray(i) & vbCrLf
+                '    Next
+
+                '    Dim x As String = Mid(addressItemArray(6), 1, 1)
+                '    Select Case Mid(addressItemArray(6), 1, 1)
+                '        Case "O"
+                '            If j = 0 Then
+                '                gblAddr1 = addressItemArray(0) & " " & addressItemArray(1)
+                '                gblAddr2 = addressItemArray(2) & ", " & addressItemArray(3) & "  " & addressItemArray(4)
+                '            ElseIf j = 1 Then
+                '                gblAddr1_2 = addressItemArray(0) & " " & addressItemArray(1)
+                '                gblAddr2_2 = addressItemArray(2) & ", " & addressItemArray(3) & "  " & addressItemArray(4)
+                '            ElseIf j = 2 Then
+                '                gblAddr1_3 = addressItemArray(0) & " " & addressItemArray(1)
+                '                gblAddr2_3 = addressItemArray(2) & ", " & addressItemArray(3) & "  " & addressItemArray(4)
+                '            End If
+
+                '    End Select
+                'Next
             End If 'if strAddress <> ""
         Catch ex As Exception
             functionError = True
@@ -510,55 +537,143 @@ Module Module1
         updateit = False
         Dim intFaxCounter As Integer = 0
         Dim j As Integer = 0
+
+        Dim strPhoneNumOnly As String = ""
+        Dim numcount As Integer = 0
+        Dim numbertype As New List(Of String)
+        Dim phonenumber As New List(Of String)
+        Dim numtype As String = ""
+
+        Dim phone() As String
+
         Try
             strPhone = dictNVP.Item("Phone")
-            If strPhone <> "" Then ' 20111101
+            strPhoneNumOnly = dictNVP.Item("Phone NNN-NNN-NNNN").replace("CPRI", "")
+
+
+            If strPhone <> "" AndAlso strPhoneNumOnly <> "" Then ' 20111101
                 phoneArray = Split(strPhone, "~")
                 For j = 0 To UBound(phoneArray)
-
-                    strPhoneItem = phoneArray(j)
-                    phoneItemArray = Split(strPhoneItem, "^")
-                    For i = 0 To UBound(phoneItemArray)
-                        'txtOutput.Text = txtOutput.Text & i & "  -  " & phoneItemArray(i) & vbCrLf
-                    Next
-
-                    Select Case phoneItemArray(8)
-                        Case "CO"
-                            If j = 0 Then
-                                'txtOutput.Text = txtOutput.Text & "Office Phone: " & phoneItemArray(6) & vbCrLf
-                                gblPhone = phoneItemArray(6)
-                            ElseIf j = 1 Then
-                                gblPhone_2 = phoneItemArray(6)
-                            ElseIf j + 2 Then
-                                gblPhone_3 = phoneItemArray(6)
-                            End If
-                        Case "CF"
-                            'txtOutput.Text = txtOutput.Text & "Office Fax: " & phoneItemArray(6) & vbCrLf
-                            If intFaxCounter = 0 Then
-                                gblFax = phoneItemArray(6)
-                                intFaxCounter += 1
-                            ElseIf intFaxCounter = 1 Then
-                                gblFax_2 = phoneItemArray(6)
-                                intFaxCounter += 1
-                            ElseIf intFaxCounter = 2 Then
-                                gblFax_3 = phoneItemArray(6)
-                                intFaxCounter += 1
-                            End If
-                        Case "CH"
-                            'txtOutput.Text = txtOutput.Text & "Home Phone: " & phoneItemArray(6) & vbCrLf
-                            GblHome = phoneItemArray(6)
-                        Case "CB"
-                            'txtOutput.Text = txtOutput.Text & "Beeper: " & phoneItemArray(6) & vbCrLf
-
-                        Case "CP"
-                            'txtOutput.Text = txtOutput.Text & "Pager: " & phoneItemArray(6) & vbCrLf
-                            gblPager = phoneItemArray(6)
-                        Case "CC"
-                            'txtOutput.Text = txtOutput.Text & "Mobile Phone: " & phoneItemArray(6) & vbCrLf
-                            gblMobile = phoneItemArray(6)
-                    End Select
+                    If phoneArray(j).Contains("PH") Or phoneArray(j).Contains("FX") Or phoneArray(j).Contains("BP") Then
+                        numbertype.Add(phoneArray(j))
+                    End If
                 Next
-            End If 'if strPhone <> ""
+
+                phone = Split(strPhoneNumOnly, "~")
+                For j = 0 To UBound(phone)
+                    If phone(j) <> "" And phone(j) <> "CPRI" Then
+                        If numbertype.Count - 1 >= j Then
+                            numtype = numbertype(j).Replace("^^", "")
+                            If numtype = "PH" Then
+                                If j > 0 Then
+                                    'Home Number
+                                    GblHome = phone(j)
+                                Else
+                                    gblPhone = phone(j)
+                                End If
+                            ElseIf numtype = "FX" Then
+                                'Fax Number
+                                gblFax = phone(j)
+                            ElseIf numtype = "BP" Then
+                                'Pager Number
+                                gblPager = phone(j)
+                            End If
+                        End If
+                    End If
+
+                Next
+
+
+
+            End If
+
+
+
+
+
+
+            'If strPhone <> "" Then ' 20111101
+            '    phoneArray = Split(strPhone, "~")
+
+            '    For j = 0 To UBound(phoneArray)
+            '        'create 2 lists to compare
+            '        If phoneArray(j).Contains("PH") Or phoneArray(j).Contains("FX") Or phoneArray(j).Contains("BP") Then
+            '            numbertype.Add(phoneArray(j))
+            '        Else
+            '            phonenumber.Add(phoneArray(j))
+            '        End If
+            '    Next
+
+
+            '    For Each phonenum As String In phonenumber
+            '        numtype = numbertype(numcount).Replace("^^", "")
+
+            '        If numtype = "PH" Then
+            '            'Office Number
+            '            gblPhone = phonenum
+            '            If numcount > 0 Then
+            '                'Home Number
+            '                GblHome = phonenum
+            '            End If
+
+            '        ElseIf numtype = "FX" Then
+            '            'Fax Number
+            '            gblFax = phonenum
+            '        ElseIf numtype = "BP" Then
+            '            'Pager Number
+            '            gblPager = phonenum
+
+            '        End If
+
+            '        numcount += 1
+            '    Next
+
+
+
+            'For j = 0 To UBound(phoneArray)
+            '        strPhoneItem = phoneArray(j)
+            '        phoneItemArray = Split(strPhoneItem, "^")
+            '        For i = 0 To UBound(phoneItemArray)
+            '            'txtOutput.Text = txtOutput.Text & i & "  -  " & phoneItemArray(i) & vbCrLf
+            '        Next
+
+            '        Select Case phoneItemArray(8)
+            '            Case "CO"
+            '                If j = 0 Then
+            '                    'txtOutput.Text = txtOutput.Text & "Office Phone: " & phoneItemArray(6) & vbCrLf
+            '                    gblPhone = phoneItemArray(6)
+            '                ElseIf j = 1 Then
+            '                    gblPhone_2 = phoneItemArray(6)
+            '                ElseIf j + 2 Then
+            '                    gblPhone_3 = phoneItemArray(6)
+            '                End If
+            '            Case "CF"
+            '                'txtOutput.Text = txtOutput.Text & "Office Fax: " & phoneItemArray(6) & vbCrLf
+            '                If intFaxCounter = 0 Then
+            '                    gblFax = phoneItemArray(6)
+            '                    intFaxCounter += 1
+            '                ElseIf intFaxCounter = 1 Then
+            '                    gblFax_2 = phoneItemArray(6)
+            '                    intFaxCounter += 1
+            '                ElseIf intFaxCounter = 2 Then
+            '                    gblFax_3 = phoneItemArray(6)
+            '                    intFaxCounter += 1
+            '                End If
+            '            Case "CH"
+            '                'txtOutput.Text = txtOutput.Text & "Home Phone: " & phoneItemArray(6) & vbCrLf
+            '                GblHome = phoneItemArray(6)
+            '            Case "CB"
+            '            'txtOutput.Text = txtOutput.Text & "Beeper: " & phoneItemArray(6) & vbCrLf
+
+            '            Case "CP"
+            '                'txtOutput.Text = txtOutput.Text & "Pager: " & phoneItemArray(6) & vbCrLf
+            '                gblPager = phoneItemArray(6)
+            '            Case "CC"
+            '                'txtOutput.Text = txtOutput.Text & "Mobile Phone: " & phoneItemArray(6) & vbCrLf
+            '                gblMobile = phoneItemArray(6)
+            '        End Select
+            '    Next
+            'End If 'if strPhone <> ""
         Catch ex As Exception
             functionError = True
             gblLogString = gblLogString & "Process Phone Error" & vbCrLf
@@ -605,6 +720,8 @@ Module Module1
         Dim updateit As Boolean
         addit = False
         updateit = False
+        Dim state As String = ""
+        Dim licnum As String = ""
 
         Dim j As Integer = 0
         Try
@@ -621,21 +738,29 @@ Module Module1
                     Next
 
                     Select Case Trim(Mid(docIDItemArray(1), 1, 3))
-                        Case "SL"
+                        'Case "SL"
+                        Case "SLN"
                             'txtOutput.Text = txtOutput.Text & "State Licence: " & docIDItemArray(0) & vbCrLf
                             'txtOutput.Text = txtOutput.Text & "State: " & docIDItemArray(2) & vbCrLf
                             'txtOutput.Text = txtOutput.Text & "Expiration Date: " & docIDItemArray(3) & vbCrLf
-                            gblLicNo = docIDItemArray(0) & " (" & docIDItemArray(2) & ")"
+
+                            state = docIDItemArray(0).Substring(0, 2)
+                            licnum = docIDItemArray(0).Remove(0, 2)
+
+                            gblLicNo = licnum & " (" & state & ")"
+                            'gblLicNo = docIDItemArray(0) & " (" & docIDItemArray(2) & ")"
                         Case "DEA"
                             'txtOutput.Text = txtOutput.Text & "DEA Licence: " & docIDItemArray(0) & vbCrLf
                             'txtOutput.Text = txtOutput.Text & "State: " & docIDItemArray(2) & vbCrLf
                             'txtOutput.Text = txtOutput.Text & "Expiration Date: " & docIDItemArray(3) & vbCrLf
                             gblDEANum = docIDItemArray(0)
-                        Case "UPI"
+                        'Case "UPI"
+                        Case "UPIN"
                             'txtOutput.Text = txtOutput.Text & "Unique Physician ID No: " & docIDItemArray(0) & vbCrLf
                             '20110524 added global upin number
                             gblUPIN = docIDItemArray(0)
-                        Case "BCN"
+                        'Case "BCN"
+                        Case "BC"
                             'txtOutput.Text = txtOutput.Text & "Blue Cross No: " & docIDItemArray(0) & vbCrLf
                             gblBlueCrossNum = docIDItemArray(0)
                         Case "MCD"
@@ -644,7 +769,8 @@ Module Module1
                             'txtOutput.Text = txtOutput.Text & "General Ledger No: " & docIDItemArray(0) & vbCrLf
                         Case "CY"
                             'txtOutput.Text = txtOutput.Text & "Country No: " & docIDItemArray(0) & vbCrLf
-                        Case "TAX"
+                        'Case "TAX"
+                        Case "TAXO"
                             'txtOutput.Text = txtOutput.Text & "Tax ID No: " & docIDItemArray(0) & vbCrLf
                         Case "MCR"
                             'txtOutput.Text = txtOutput.Text & "Medicare No: " & docIDItemArray(0) & vbCrLf
@@ -683,23 +809,25 @@ Module Module1
         Dim j As Integer = 0
         Try
             strSpecialty = dictNVP.Item("Specialty")
-            specialtyArray = Split(strSpecialty, "~")
-            For j = 0 To UBound(specialtyArray)
-                'txtOutput.Text = txtOutput.Text & "~~~~~~~~~~~~~~~~~~~~~~~~~~~~" & vbCrLf
-                'txtOutput.Text = txtOutput.Text & specialtyArray(j) & vbCrLf
-                strSpecialtyItem = specialtyArray(j)
-                specialtyItemArray = Split(strSpecialtyItem, "^")
-                For i = 0 To UBound(specialtyItemArray)
-                    'txtOutput.Text = txtOutput.Text & i & "  -  " & specialtyItemArray(i) & vbCrLf
-                Next
-                'txtOutput.Text = txtOutput.Text & "Specialty: " & specialtyItemArray(0) & vbCrLf
-                'txtOutput.Text = txtOutput.Text & "Governing Board: " & specialtyItemArray(1) & vbCrLf
-                'txtOutput.Text = txtOutput.Text & "Eligible/Certified: " & specialtyItemArray(2) & vbCrLf
-                'txtOutput.Text = txtOutput.Text & "Date of Certification: " & specialtyItemArray(3) & vbCrLf
+            specialtyArray = Split(strSpecialty, "&")
 
-                gblSpeciality = gblSpeciality & "  " & specialtyItemArray(0)
+            gblSpeciality = specialtyArray(1)
+            'For j = 0 To UBound(specialtyArray)
+            '    'txtOutput.Text = txtOutput.Text & "~~~~~~~~~~~~~~~~~~~~~~~~~~~~" & vbCrLf
+            '    'txtOutput.Text = txtOutput.Text & specialtyArray(j) & vbCrLf
+            '    strSpecialtyItem = specialtyArray(j)
+            '    specialtyItemArray = Split(strSpecialtyItem, "^")
+            '    For i = 0 To UBound(specialtyItemArray)
+            '        'txtOutput.Text = txtOutput.Text & i & "  -  " & specialtyItemArray(i) & vbCrLf
+            '    Next
+            '    'txtOutput.Text = txtOutput.Text & "Specialty: " & specialtyItemArray(0) & vbCrLf
+            '    'txtOutput.Text = txtOutput.Text & "Governing Board: " & specialtyItemArray(1) & vbCrLf
+            '    'txtOutput.Text = txtOutput.Text & "Eligible/Certified: " & specialtyItemArray(2) & vbCrLf
+            '    'txtOutput.Text = txtOutput.Text & "Date of Certification: " & specialtyItemArray(3) & vbCrLf
 
-            Next
+            '    gblSpeciality = gblSpeciality & "  " & specialtyItemArray(1)
+
+            'Next
         Catch ex As Exception
             functionError = True
             gblLogString = gblLogString & "Process Specialty Error" & vbCrLf
@@ -723,25 +851,26 @@ Module Module1
 
         Dim j As Integer = 0
         Try
-            gblStatus = dictNVP.Item("Status Flag ID")
-            strStaffIDCode = dictNVP.Item("Staff ID Code")
-            staffIDCodeArray = Split(strStaffIDCode, "~")
-            For j = 0 To UBound(staffIDCodeArray)
-                'txtOutput.Text = txtOutput.Text & "~~~~~~~~~~~~~~~~~~~~~~~~~~~~" & vbCrLf
-                'txtOutput.Text = txtOutput.Text & staffIDCodeArray(j) & vbCrLf
-                strStaffIDCodeItem = staffIDCodeArray(j)
-                staffIDCodeArrayItem = Split(strStaffIDCodeItem, "^")
-                For i = 0 To UBound(staffIDCodeArrayItem)
+            'gblStatus = dictNVP.Item("Status Flag ID")
+            'strStaffIDCode = dictNVP.Item("Staff ID Code")
+            'staffIDCodeArray = Split(strStaffIDCode, "~")
+            'For j = 0 To UBound(staffIDCodeArray)
+            '    'txtOutput.Text = txtOutput.Text & "~~~~~~~~~~~~~~~~~~~~~~~~~~~~" & vbCrLf
+            '    'txtOutput.Text = txtOutput.Text & staffIDCodeArray(j) & vbCrLf
+            '    strStaffIDCodeItem = staffIDCodeArray(j)
+            '    staffIDCodeArrayItem = Split(strStaffIDCodeItem, "^")
+            '    For i = 0 To UBound(staffIDCodeArrayItem)
 
-                    If j = 1 And i = 0 Then
-                        'txtOutput.Text = txtOutput.Text & "PhysNum" & "  -  " & staffIDCodeArrayItem(i) & vbCrLf
-                        gblPhysnum = staffIDCodeArrayItem(i)
-                    Else
+            '        If j = 1 And i = 0 Then
+            '            'txtOutput.Text = txtOutput.Text & "PhysNum" & "  -  " & staffIDCodeArrayItem(i) & vbCrLf
+            '            gblPhysnum = staffIDCodeArrayItem(i)
+            '        Else
 
-                        'txtOutput.Text = txtOutput.Text & i & "  -  " & staffIDCodeArrayItem(i) & vbCrLf
-                    End If
-                Next
-            Next
+            '            'txtOutput.Text = txtOutput.Text & i & "  -  " & staffIDCodeArrayItem(i) & vbCrLf
+            '        End If
+            '    Next
+            'Next
+            gblPhysnum = dictNVP.Item("Staff ID Code - ID")
         Catch ex As Exception
             functionError = True
             gblLogString = gblLogString & "Process Staff ID Error Error" & vbCrLf
@@ -853,11 +982,11 @@ Module Module1
                 '20110524 added upin processing
                 '20111005 - added CurrentStatus and StatusCategory
                 sql = "Insert [115phys] "
-                sql = sql & "(physnum, firstname, MI, lname, lastname, addr1, addr2, licno, pager, phone, "
+                sql = sql & "(modified, physnum, firstname, MI, lname, lastname, addr1, addr2, licno, pager, phone, "
                 sql = sql & "fax, mobile, home, specialty, DEANum, upin, npi, statusFlag, blueCrossNum, notes, "
                 sql = sql & "CurrentStatus, StatusCategory, "
                 sql = sql & "medicareNum) "
-                sql = sql & "VALUES ("
+                sql = sql & "VALUES ('" & DateTime.Now & "', "
                 insertNumber(gblPhysnum)
                 insertString(gblFirstName)
                 insertString(gblMiddle)
@@ -1026,11 +1155,11 @@ Module Module1
                 '20110524 added upin processing and statusFlag
                 '20111005 - added CurrentStatus and StatusCategory
                 sql = "Insert [114phys] "
-                sql = sql & "(physnum, firstname, middle, lname, lastname, addr1, addr2, licno, pager, phone, "
+                sql = sql & "(modified, physnum, firstname, middle, lname, lastname, addr1, addr2, licno, pager, phone, "
                 sql = sql & "fax, mobile, home, specialty, DEANum, upin, npi, statusFlag, blueCrossNum, notes, "
                 sql = sql & "CurrentStatus, StatusCategory, "
                 sql = sql & "medicareNum) "
-                sql = sql & "VALUES ("
+                sql = sql & "VALUES ('" & DateTime.Now & "', "
                 insertNumber(gblPhysnum)
                 insertString(gblFirstName)
                 insertString(Mid$(gblMiddle, 1, 1))
